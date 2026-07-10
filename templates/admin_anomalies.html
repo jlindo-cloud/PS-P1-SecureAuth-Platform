@@ -1,0 +1,86 @@
+{% extends 'layout.html' %}
+{% block content %}
+  <section class="page" aria-label="Detección de anomalías">
+    <header class="page-header">
+      <div>
+        <h1>Detección de Anomalías</h1>
+        <p class="page-subtitle">Autenticación Zero-Trust · Scoring de riesgo con IsolationForest + LOF</p>
+      </div>
+      <a class="cta" href="{{ url_for('admin_panel') }}">← Panel de administración</a>
+    </header>
+
+    <div class="kpi-row" role="list" aria-label="Métricas de riesgo">
+      <div class="kpi-card" role="listitem">
+        <div class="kpi-icon kpi-icon-green" aria-hidden="true">✓</div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ attempts|length }}</div>
+          <div class="kpi-label">Intentos analizados</div>
+        </div>
+      </div>
+      <div class="kpi-card" role="listitem">
+        <div class="kpi-icon kpi-icon-purple" aria-hidden="true">⚠</div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ medium_risk|length }}</div>
+          <div class="kpi-label">Riesgo medio</div>
+        </div>
+      </div>
+      <div class="kpi-card" role="listitem">
+        <div class="kpi-icon" style="background: rgba(220,38,38,0.12); color: var(--danger);" aria-hidden="true">⛔</div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ high_risk|length }}</div>
+          <div class="kpi-label">Riesgo alto</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <table class="data-table" aria-label="Tabla de intentos de login">
+        <thead>
+          <tr>
+            <th>FECHA</th>
+            <th>CORREO</th>
+            <th>RESULTADO</th>
+            <th>IP</th>
+            <th>SCORE</th>
+            <th>NIVEL DE RIESGO</th>
+            <th>FACTORES</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in attempts %}
+            <tr>
+              <td>{{ a['created_at'].split('.')[0].replace('T', ' ') }}</td>
+              <td class="name-cell">{{ a['email'] }}</td>
+              <td>
+                {% if a['success'] %}
+                  <span class="badge badge-stock">Exitoso</span>
+                {% else %}
+                  <span class="badge badge-tag">Fallido</span>
+                {% endif %}
+              </td>
+              <td>{{ a['ip_address'] or '—' }}</td>
+              <td>{{ '%.2f'|format(a['risk_score']) if a['risk_score'] is not none else '—' }}</td>
+              <td>
+                {% if a['risk_level'] == 'high' %}
+                  <span class="badge" style="background: rgba(220,38,38,0.15); color: var(--danger);">Alto</span>
+                {% elif a['risk_level'] == 'medium' %}
+                  <span class="badge badge-warning">Medio</span>
+                {% elif a['risk_level'] == 'low' %}
+                  <span class="badge badge-stock">Bajo</span>
+                {% else %}
+                  <span class="badge badge-tag">—</span>
+                {% endif %}
+              </td>
+              <td style="font-size: 0.8rem; color: var(--muted); max-width: 280px;">{{ a['factors'] or '—' }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="7" style="text-align:center; color: var(--muted); padding: 32px;">Aún no hay intentos de login registrados.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="helper-text">
+        El score combina reglas de comportamiento (IP/dispositivo nuevos, intentos fallidos recientes, horario inusual) con modelos no supervisados IsolationForest + Local Outlier Factor una vez que existe suficiente historial por usuario.
+      </p>
+    </div>
+  </section>
+{% endblock %}

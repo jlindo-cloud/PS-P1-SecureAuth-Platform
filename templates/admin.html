@@ -1,0 +1,242 @@
+{% extends 'layout.html' %}
+{% block content %}
+  <section class="page" aria-label="Panel de Administración">
+    <header class="page-header">
+      <div>
+        <h1>Panel de Administración</h1>
+        <p class="page-subtitle">Gestiona productos y revisa la actividad</p>
+      </div>
+
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a class="btn btn-outline" href="{{ url_for('admin_anomalies') }}">🧠 Detección de anomalías</a>
+        <a class="cta" href="{{ url_for('admin_product_new') }}">+ Nuevo producto</a>
+      </div>
+    </header>
+
+    <div class="kpi-row" role="list" aria-label="Métricas">
+      <div class="kpi-card" role="listitem">
+        <div class="kpi-icon kpi-icon-blue" aria-hidden="true">
+          <!-- caja -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 8.5L12 3 3 8.5L12 14L21 8.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M3 8.5V16.5L12 21V14" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M21 8.5V16.5L12 21V14" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ (products|length) or 0 }}</div>
+          <div class="kpi-label">Productos</div>
+        </div>
+      </div>
+
+      <div class="kpi-card" role="listitem">
+        <div class="kpi-icon kpi-icon-purple" aria-hidden="true">
+          <!-- auditoría / lista -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9 6H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M9 12H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M9 18H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M3.5 6.5L4.5 7.5L6.5 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3.5 12.5L4.5 13.5L6.5 11.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3.5 18.5L4.5 19.5L6.5 17.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ total_audit or 0 }}</div>
+          <div class="kpi-label">Registros</div>
+        </div>
+      </div>
+
+      <div class="kpi-card" role="listitem">
+        <div class="kpi-icon kpi-icon-green" aria-hidden="true">
+          <!-- check -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ in_stock or 0 }}</div>
+          <div class="kpi-label">En stock</div>
+        </div>
+      </div>
+    </div>
+
+    <section class="tabs" aria-label="Vistas de administración">
+      <div class="tab-buttons" role="tablist" aria-label="Tabs">
+        <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="productos">
+          <span class="tab-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 8.5L12 3 3 8.5L12 14L21 8.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M3 8.5V16.5L12 21V14" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M21 8.5V16.5L12 21V14" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          Productos
+        </button>
+
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="usuarios">
+          <span class="tab-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 12.5C14.4853 12.5 16.5 10.4853 16.5 8C16.5 5.51472 14.4853 3.5 12 3.5C9.51472 3.5 7.5 5.51472 7.5 8C7.5 10.4853 9.51472 12.5 12 12.5Z" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M4 20.5C4 16.3579 7.35786 13 11.5 13H12.5C16.6421 13 20 16.3579 20 20.5" stroke="currentColor" stroke-width="1.8"/>
+            </svg>
+          </span>
+          Usuarios
+        </button>
+
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="auditoria">
+          <span class="tab-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 6H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M9 12H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M9 18H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M3 7H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M3 12H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M3 17H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </span>
+          Auditoría
+        </button>
+      </div>
+
+      <div class="tab-panels">
+        <div class="tab-panel active" id="tab-productos" role="tabpanel">
+          <div class="table-card">
+            <table class="data-table" aria-label="Tabla de productos">
+              <thead>
+                <tr>
+                  <th>IMAGEN</th>
+                  <th>NOMBRE</th>
+                  <th>CATEGORÍA</th>
+                  <th>PRECIO</th>
+                  <th>ESTADO</th>
+                  <th class="col-actions">ACCIONES</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for product in products %}
+                  <tr>
+                    <td>
+                      {% set img_url = product['image_url'] %}
+                      <img
+                        class="thumb"
+                        src="{% if img_url %}{{ url_for('media', filename=img_url) }}{% else %}{{ url_for('static', filename='img/placeholder.png') }}{% endif %}"
+                        alt="{{ product['name'] }}"
+                        loading="lazy"
+                        data-fallback-src="{{ url_for('static', filename='img/placeholder.png') }}"
+                      />
+                    </td>
+                    <td class="name-cell">{{ product['name'] }}</td>
+                    <td>
+                      <span class="badge badge-tag">{{ product['category'] or 'Otros' }}</span>
+                    </td>
+                    <td>
+                      ${{ '%.2f'|format(product['price']|float) }}
+                    </td>
+                    <td>
+                      {% if product['stock'] and product['stock'] > 0 %}
+                        <span class="badge badge-stock">En stock</span>
+                      {% else %}
+                        <span class="badge badge-tag">Agotado</span>
+                      {% endif %}
+                    </td>
+                    <td class="col-actions">
+                      <form method="post" action="{{ url_for('admin_product_delete', product_id=product['id']) }}" data-confirm="¿Eliminar este producto?" style="display:inline;">
+                        {{ csrf_token() }}
+                        <button class="icon-btn" type="submit" title="Eliminar producto" aria-label="Eliminar">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 7H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <path d="M10 11V17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <path d="M14 11V17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <path d="M6 7L8 4H16L18 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                            <path d="M7 7L8 20H16L17 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                          </svg>
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-usuarios" role="tabpanel" aria-hidden="true">
+          <div class="table-card">
+            <table class="data-table" aria-label="Tabla de usuarios">
+              <thead>
+                <tr>
+                  <th>EMAIL</th>
+                  <th>ROL</th>
+                  <th>ACCIONES</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for user in users %}
+                  <tr>
+                    <td class="name-cell">{{ user['email'] }}</td>
+                    <td>{{ user['role'] }}</td>
+                    <td class="col-actions">
+                      {% if user['id'] == current_user.id %}
+                        <span class="badge badge-warning">No puedes cambiar tu propio rol</span>
+                      {% else %}
+                        <form method="post" action="{{ url_for('admin_change_role', user_id=user['id']) }}" style="display:inline-flex; gap: 8px; align-items: center;">
+                          {{ csrf_token() }}
+                          <select name="role" aria-label="Seleccionar rol para {{ user['email'] }}">
+                            <option value="user" {% if user['role'] == 'user' %}selected{% endif %}>user</option>
+                            <option value="admin" {% if user['role'] == 'admin' %}selected{% endif %}>admin</option>
+                          </select>
+                          <button type="submit" class="btn btn-sm">Guardar</button>
+                        </form>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-auditoria" role="tabpanel" aria-hidden="true">
+          <div class="table-card">
+            <table class="data-table" aria-label="Tabla de auditoría">
+              <thead>
+                <tr>
+                  <th>FECHA</th>
+                  <th>USUARIO</th>
+                  <th>ACCIÓN</th>
+                  <th>DETALLE</th>
+                  <th>ESTADO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in audit_logs %}
+                  <tr>
+                    <td>{{ row['created_at'].split('.')[0].replace('T', ' ') }}</td>
+                    <td class="name-cell">{{ row['actor'] }}</td>
+                    <td>{{ row['action'] }}</td>
+                    <td>{{ row['metadata'] }}</td>
+                    <td>
+                      {% if 'failed' in row['action'] or 'denied' in row['action'] %}
+                        <span class="badge badge-tag">Fallido</span>
+                      {% elif 'challenge' in row['action'] %}
+                        <span class="badge badge-warning">Alerta</span>
+                      {% else %}
+                        <span class="badge badge-stock">Correcto</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="5" style="text-align:center; color: var(--muted); padding: 24px;">Aún no hay registros de auditoría.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+
+            <p class="helper-text">
+              Mostrando los últimos {{ audit_logs|length }} de {{ total_audit or 0 }} registros totales.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>

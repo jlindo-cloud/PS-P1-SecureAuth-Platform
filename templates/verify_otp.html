@@ -1,0 +1,45 @@
+{% extends 'layout.html' %}
+
+{% block title %}Verificación de seguridad | SecureVault Commerce{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+    <section class="login-hero">
+      <div class="login-hero-bg"></div>
+
+      <div class="login-card animate-in">
+        <div class="login-header">
+          <div class="login-logo" style="background: linear-gradient(135deg, #B45309, #D97706);">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 9V13M12 17H12.01" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h1 class="login-title" style="font-size: 1.5rem;">VERIFICACIÓN REQUERIDA</h1>
+          <p class="login-subtitle">Autenticación Zero-Trust · Comportamiento inusual detectado</p>
+        </div>
+
+        <div class="security-banner" style="background: rgba(217, 119, 6, 0.1); border-color: rgba(217, 119, 6, 0.25); color: #92400E;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
+            <path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="#92400E" stroke-width="1.8" stroke-linejoin="round"/>
+          </svg>
+          <span>{{ reason }}</span>
+        </div>
+
+        <form method="post" novalidate class="login-form">
+          {{ form.hidden_tag() }}
+          <div class="form-group">
+            <label for="code" class="form-label">Código de 6 dígitos</label>
+            {{ form.code(class_="form-input", placeholder="000000", maxlength="6", autocomplete="one-time-code", style="letter-spacing: 0.5em; text-align: center; font-size: 1.25rem; font-weight: 700;") }}
+            {% for error in form.code.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </div>
+          <button type="submit" class="btn btn-primary w-full">
+            <span>Verificar identidad</span>
+          </button>
+        </form>
+
+        <p class="access-restricted">Enviamos un código de un solo uso a tu correo registrado. Vence en 5 minutos.</p>
+      </div>
+    </section>
+  </div>
+{% endblock %}
