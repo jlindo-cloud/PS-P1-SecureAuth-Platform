@@ -59,27 +59,7 @@ services:
           name: secureauth-db
           property: connectionString
 
-      # ---------------------------------------------------
-      # Correo del segundo factor
-      #
-      # Render BLOQUEA los puertos SMTP (25, 465, 587) en los
-      # servicios web del plan gratuito, así que SMTP no
-      # funciona ahí. Se usa una API HTTPS, que viaja por el
-      # 443 y no está afectada.
-      #
-      # Configurar UNA de las dos en el panel:
-      #   BREVO_API_KEY   -> brevo.com (300 correos/día gratis,
-      #                      envía a cualquier destinatario)
-      #   RESEND_API_KEY  -> resend.com
-      #
-      # Las variables SMTP_* se mantienen para desarrollo
-      # local y para planes de pago.
-      # ---------------------------------------------------
-      - key: BREVO_API_KEY
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-
+      # Correo del segundo factor: completar en el panel
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
