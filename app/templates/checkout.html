@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Pago simulado{% endblock %}
+{% block title %}Finalizar compra{% endblock %}
 
 {% block content %}
 <section class="checkout">
@@ -8,7 +8,8 @@
     <h1>Finalizar compra</h1>
 
     <div class="alert warning">
-        Simulador académico. No ingreses datos financieros reales.
+        Entorno de demostración: no ingreses datos financieros
+        reales. Los datos de la tarjeta no se almacenan.
     </div>
 
     <div class="card">
@@ -79,20 +80,24 @@
                 name="provider"
                 required
             >
-                <option value="BCP">BCP</option>
-                <option value="BBVA">BBVA</option>
-                <option value="Interbank">Interbank</option>
-                <option value="Mastercard">Mastercard</option>
-                <option value="American Express">
+                <optgroup label="Tarjeta" data-metodo="card">
+                    <option value="BCP">BCP</option>
+                    <option value="BBVA">BBVA</option>
+                    <option value="Interbank">Interbank</option>
+                    <option value="Mastercard">Mastercard</option>
+                    <option value="American Express">
                     American Express
-                </option>
-                <option value="Yape">Yape</option>
-                <option value="Plin">Plin</option>
+                    </option>
+                </optgroup>
+                <optgroup label="Billetera digital" data-metodo="wallet">
+                    <option value="Yape">Yape</option>
+                    <option value="Plin">Plin</option>
+                </optgroup>
             </select>
         </div>
 
-        <fieldset>
-            <legend>Tarjeta simulada</legend>
+        <fieldset id="datos-tarjeta" data-metodo="card">
+            <legend>Datos de la tarjeta</legend>
 
             <div class="form-group">
                 <label for="card_number">
@@ -139,7 +144,7 @@
 
             <div class="form-group">
                 <label for="cvv">
-                    CVV de prueba
+                    CVV
                 </label>
 
                 <input
@@ -154,8 +159,8 @@
             </div>
         </fieldset>
 
-        <fieldset>
-            <legend>Yape o Plin simulado</legend>
+        <fieldset id="datos-billetera" data-metodo="wallet">
+            <legend>Datos de la billetera</legend>
 
             <div class="form-group">
                 <label for="phone">
@@ -189,14 +194,20 @@
             </div>
 
             <p class="security-note">
-                Código académico de prueba:
-                <strong>123456</strong>
+                <strong>Código de demostración: 123456</strong>
+                En una integración real este código lo genera y
+                valida la aplicación de la billetera, nunca
+                esta tienda.
             </p>
         </fieldset>
 
-        <button class="button" type="submit">
+        <button class="button button-full" type="submit">
             Confirmar compra
         </button>
     </form>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/checkout.js') }}" defer></script>
 {% endblock %}

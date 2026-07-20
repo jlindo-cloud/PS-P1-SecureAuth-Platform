@@ -23,8 +23,10 @@ from sqlalchemy import or_, select
 
 from .audit import audit_event
 from .extensions import db, limiter, oauth
+from .anomaly_detector import hash_ip, score_login
 from .forms import LoginForm
 from .mailer import send_email
+from .models import LoginAttempt
 from .models import User
 from .security import is_safe_relative_url
 
@@ -144,6 +146,66 @@ def create_user_session(
 
 
 # =========================================================
+# ZERO-TRUST: EVALUACIÓN DE RIESGO POR INTENTO
+#
+# Cada intento de acceso se puntúa según el comportamiento
+# habitual del usuario (hora, red, dispositivo, fallos
+# recientes). El resultado no sustituye al segundo factor
+# —el OTP se exige siempre— sino que endurece el desafío
+# cuando el comportamiento es anómalo.
+# =========================================================
+
+def evaluate_login_risk(email: str) -> dict:
+    """Puntúa el intento actual contra el historial del usuario."""
+    ip_hash = hash_ip(request.remote_addr)
+    user_agent = (request.user_agent.string or "")[:300]
+
+    try:
+        return score_login(email, ip_hash, user_agent)
+    except Exception:
+        # El motor de riesgo nunca debe impedir el login:
+        # ante un fallo se degrada a riesgo desconocido.
+        current_app.logger.exception(
+            "Fallo al evaluar el riesgo del intento de acceso."
+        )
+        return {
+            "score": None,
+            "risk_level": "unknown",
+            "recommendation": "Motor de riesgo no disponible.",
+            "factors": [],
+            "method": "unavailable",
+        }
+
+
+def record_login_attempt(
+    email: str,
+    success: bool,
+    risk: dict | None = None,
+) -> None:
+    """Registra el intento para alimentar el motor Zero-Trust."""
+    now = datetime.now(timezone.utc)
+    risk = risk or {}
+
+    db.session.add(
+        LoginAttempt(
+            email=email,
+            success=success,
+            ip_hash=hash_ip(request.remote_addr),
+            user_agent=(request.user_agent.string or "")[:300],
+            hour_of_day=now.hour,
+            day_of_week=now.weekday(),
+            risk_score=risk.get("score"),
+            risk_level=risk.get("risk_level"),
+            risk_method=risk.get("method"),
+            risk_factors="; ".join(
+                risk.get("factors", [])
+            )[:500],
+        )
+    )
+    db.session.commit()
+
+
+# =========================================================
 # LOGIN LOCAL
 # =========================================================
 
@@ -165,6 +227,8 @@ def login():
         email = normalize_email(
             form.email.data
         )
+
+        risk = evaluate_login_risk(email)
 
         user = db.session.execute(
             select(User).where(
@@ -188,12 +252,16 @@ def login():
             or not user.active
             or not password_is_valid
         ):
+            record_login_attempt(email, success=False, risk=risk)
+
             audit_event(
                 "LOGIN_FAILED",
                 success=False,
                 details={
                     "provider": "local",
                     "reason": "invalid_credentials",
+                    "risk_level": risk["risk_level"],
+                    "risk_score": risk["score"],
                 },
             )
 
@@ -217,6 +285,8 @@ def login():
         # NIVEL 4 — MFA: la contraseña por sí sola no
         # concede la sesión. Se inicia el segundo factor.
         # -------------------------------------------------
+        record_login_attempt(email, success=True, risk=risk)
+
         audit_event(
             "LOGIN_PASSWORD_OK",
             resource_type="user",
@@ -225,17 +295,48 @@ def login():
             details={
                 "provider": "local",
                 "mfa": "otp_challenge_started",
+                "risk_level": risk["risk_level"],
+                "risk_score": risk["score"],
+                "risk_factors": risk["factors"],
+                "risk_method": risk["method"],
             },
         )
 
-        start_otp_challenge(
+        entregado = start_otp_challenge(
             user,
             next_url=(
                 next_url
                 if is_safe_relative_url(next_url)
                 else None
             ),
+            risk=risk,
         )
+
+        if not entregado and current_app.config[
+            "ENVIRONMENT"
+        ] == "production":
+            # Sin código entregado no hay forma de completar el
+            # segundo factor. Se cancela el desafío y se avisa,
+            # en vez de dejar al usuario en una pantalla que no
+            # puede resolver.
+            _clear_otp_challenge()
+
+            audit_event(
+                "MFA_DELIVERY_FAILED",
+                resource_type="user",
+                resource_id=user.id,
+                success=False,
+                details={"channel": "email"},
+            )
+
+            flash(
+                "No pudimos enviar el código de verificación. "
+                "Inténtalo de nuevo en unos minutos o "
+                "comunícate con el administrador.",
+                "error",
+            )
+
+            return redirect(url_for("auth.login"))
 
         return redirect(
             url_for("auth.verify_otp")
@@ -367,7 +468,7 @@ def _otp_digest(code: str) -> str:
     ).hexdigest()
 
 
-def _deliver_otp(user: User, code: str) -> None:
+def _deliver_otp(user: User, code: str) -> bool:
     """
     Entrega el código por correo electrónico.
 
@@ -377,7 +478,7 @@ def _deliver_otp(user: User, code: str) -> None:
     """
     minutes = current_app.config["OTP_TTL_SECONDS"] // 60
 
-    send_email(
+    return send_email(
         user.email,
         "Tu código de verificación · SecureAuth Store",
         (
@@ -407,14 +508,30 @@ def _mask_email(address: str) -> str:
 def start_otp_challenge(
     user: User,
     next_url: str | None = None,
-) -> None:
+    risk: dict | None = None,
+) -> bool:
+    """
+    Inicia el segundo factor.
+
+    El desafío se endurece según el riesgo calculado por el
+    motor Zero-Trust: ante comportamiento anómalo el código
+    vive menos y admite menos intentos. El OTP se exige
+    siempre, cualquiera sea el nivel de riesgo.
+    """
     code = _generate_otp_code()
+
+    ttl = current_app.config["OTP_TTL_SECONDS"]
+    intentos = current_app.config["OTP_MAX_ATTEMPTS"]
+    nivel = (risk or {}).get("risk_level", "unknown")
+
+    if nivel == "high":
+        # Ventana y margen de error reducidos a la mitad.
+        ttl = max(60, ttl // 2)
+        intentos = max(2, intentos // 2)
 
     expires_at = (
         datetime.now(timezone.utc)
-        + timedelta(
-            seconds=current_app.config["OTP_TTL_SECONDS"]
-        )
+        + timedelta(seconds=ttl)
     )
 
     # Se descarta cualquier estado previo de sesión antes
@@ -424,14 +541,14 @@ def start_otp_challenge(
         "user_id": user.id,
         "otp_digest": _otp_digest(code),
         "expires_at": expires_at.isoformat(),
-        "attempts_left": current_app.config[
-            "OTP_MAX_ATTEMPTS"
-        ],
+        "ttl_minutes": max(1, ttl // 60),
+        "attempts_left": intentos,
+        "risk_level": nivel,
         "next_url": next_url,
         "masked_email": _mask_email(user.email),
     }
 
-    _deliver_otp(user, code)
+    return _deliver_otp(user, code)
 
 
 def _clear_otp_challenge() -> None:
@@ -566,7 +683,7 @@ def verify_otp():
             form=form,
             attempts_left=pending["attempts_left"],
             masked_email=pending.get("masked_email"),
-            ttl_minutes=current_app.config["OTP_TTL_SECONDS"] // 60,
+            ttl_minutes=pending.get("ttl_minutes", 5),
         ), 401
 
     return render_template(
@@ -574,7 +691,7 @@ def verify_otp():
         form=form,
         attempts_left=pending["attempts_left"],
         masked_email=pending.get("masked_email"),
-        ttl_minutes=current_app.config["OTP_TTL_SECONDS"] // 60,
+        ttl_minutes=pending.get("ttl_minutes", 5),
     )
 
 

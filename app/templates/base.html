@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="SecureAuth Store, tienda académica segura con autenticación multifactor y cifrado de contraseñas.">
+  <meta name="description" content="SecureAuth Store, tienda en línea con autenticación multifactor y cifrado de contraseñas.">
   <title>{% block title %}SecureAuth Store{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
@@ -76,5 +76,6 @@
       <span>MFA · Argon2id · Flask</span>
     </div>
   </footer>
+  {% block scripts %}{% endblock %}
 </body>
 </html>
