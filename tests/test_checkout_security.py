@@ -276,3 +276,38 @@ def test_metodo_y_proveedor_deben_ser_coherentes(
     )
 
     assert db.session.query(Order).count() == 0
+
+
+def test_token_de_billetera_no_esta_en_el_codigo(app):
+    """El código de validación se lee de la configuración, no
+    de un literal en el código fuente (Bandit B105)."""
+    import inspect
+
+    from app import store
+
+    fuente = inspect.getsource(store)
+    token = app.config["WALLET_DEMO_TOKEN"]
+
+    assert f'"{token}"' not in fuente
+    assert f"'{token}'" not in fuente
+
+
+def test_token_de_billetera_incorrecto_es_rechazado(
+    login_customer, product
+):
+    login_customer.post(
+        f"/carrito/agregar/{product.id}",
+        data={"quantity": 1},
+    )
+
+    login_customer.post(
+        "/checkout",
+        data={
+            "payment_method": "wallet",
+            "provider": "Yape",
+            "phone": "999888777",
+            "validation_token": "000000",
+        },
+    )
+
+    assert db.session.query(Order).count() == 0

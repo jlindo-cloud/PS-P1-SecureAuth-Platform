@@ -7,7 +7,7 @@ cada control y la prueba automatizada que lo verifica.
 Ejecutar la evidencia completa:
 
 ```bash
-pytest -q     # 44 pruebas
+pytest -q     # 46 pruebas
 ```
 
 ---
@@ -56,6 +56,7 @@ pytest -q     # 44 pruebas
 | Consultas 100% parametrizadas con SQLAlchemy; sin concatenación | todo el proyecto |
 | Ordenamiento por **lista permitida**, no por texto del usuario | `app/store.py: sort_map` |
 | Método y proveedor de pago validados contra listas permitidas | `app/store.py` |
+| Sin credenciales escritas en el código: el token de billetera se lee de la configuración y se compara en tiempo constante | `app/config.py: WALLET_DEMO_TOKEN` |
 | Autoescape de Jinja2 activo; sin `\|safe` ni `Markup` en ninguna plantilla | `app/templates/` |
 | Validación estricta con WTForms: longitudes, rangos y expresiones regulares | `app/forms.py` |
 
@@ -105,7 +106,7 @@ pytest -q     # 44 pruebas
 | Control | Dónde |
 |---|---|
 | `pip-audit` sobre `requirements.txt` en cada push y cada lunes | `.github/workflows/security-checks.yml` |
-| `bandit` (SAST) sobre el paquete `app` | mismo workflow |
+| `bandit` (SAST) sobre el paquete `app`: **0 hallazgos** en todas las severidades | mismo workflow |
 | Dependencias con rangos de versión acotados (`>=x,<y`) | `requirements.txt` |
 | `scikit-learn` opcional: su ausencia degrada a reglas, no rompe la autenticación | `app/anomaly_detector.py` |
 
@@ -146,7 +147,8 @@ pytest -q     # 44 pruebas
 | Migraciones versionadas con Alembic: el esquema no se altera a mano | `migrations/` |
 
 **Pruebas:** `test_csrf_blocks_post_without_token`,
-`test_svg_is_rejected`
+`test_svg_is_rejected`,
+`test_token_de_billetera_no_esta_en_el_codigo`
 
 ---
 

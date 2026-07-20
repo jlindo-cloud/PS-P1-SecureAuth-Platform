@@ -209,6 +209,20 @@ class Config:
     )
 
     # ---------------------------------------------------------
+    # Código de validación de billetera digital
+    #
+    # En una integración real lo genera y valida la aplicación
+    # de la billetera (Yape/Plin) y la tienda nunca lo conoce.
+    # Aquí se lee de la configuración en vez de estar escrito
+    # en el código fuente, para que ningún valor de este tipo
+    # viva en el repositorio.
+    # ---------------------------------------------------------
+    WALLET_DEMO_TOKEN = os.getenv(
+        "WALLET_DEMO_TOKEN",
+        "123456",
+    )
+
+    # ---------------------------------------------------------
     # Microsoft Entra ID
     # Se conserva por compatibilidad, aunque ahora uses login local.
     # ---------------------------------------------------------

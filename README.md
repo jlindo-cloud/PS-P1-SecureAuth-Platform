@@ -7,7 +7,7 @@
 ![Argon2id](https://img.shields.io/badge/Hash-Argon2id-4B275F)
 ![MFA](https://img.shields.io/badge/MFA-OTP%20por%20correo-0aa884)
 ![ML](https://img.shields.io/badge/ML-IsolationForest%20%2B%20LOF-F7931E?logo=scikitlearn&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-44%20passed-2ea44f)
+![Tests](https://img.shields.io/badge/tests-46%20passed-2ea44f)
 ![OWASP](https://img.shields.io/badge/OWASP%20Top%2010-2021-000000?logo=owasp&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -140,17 +140,14 @@ secureauth-store/
 │   ├── templates/          # Vistas Jinja2
 │   └── static/
 │       ├── css/app.css
-│       ├── js/checkout.js  # Alterna campos por método de pago
 │       └── uploads/        # 12 imágenes del catálogo
 │
 ├── migrations/             # Esquema versionado
-├── tests/                  # 44 pruebas de seguridad
+├── tests/                  # 46 pruebas de seguridad
 ├── azure/                  # Scripts para despliegue en Azure
-├── check_smtp.py           # Diagnóstico de la configuración de correo
 ├── SECURITY.md             # Los 5 niveles en detalle
 ├── OWASP.md                # Mapeo del OWASP Top 10 (2021)
-├── ARCHITECTURE.md
-└── LICENSE
+└── ARCHITECTURE.md
 ```
 
 ---
@@ -434,7 +431,7 @@ responder **403**.
 ## 1.9 Pruebas automáticas
 
 ```bash
-pytest -q     # 44 pruebas
+pytest -q     # 46 pruebas
 pytest -v     # detalle una por una
 ```
 

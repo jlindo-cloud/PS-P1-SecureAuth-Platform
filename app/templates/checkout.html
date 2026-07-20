@@ -189,12 +189,12 @@
                     inputmode="numeric"
                     autocomplete="off"
                     maxlength="6"
-                    placeholder="123456"
+                    placeholder="{{ config.WALLET_DEMO_TOKEN }}"
                 >
             </div>
 
             <p class="security-note">
-                <strong>Código de demostración: 123456</strong>
+                <strong>Código de demostración: {{ config.WALLET_DEMO_TOKEN }}</strong>
                 En una integración real este código lo genera y
                 valida la aplicación de la billetera, nunca
                 esta tienda.
