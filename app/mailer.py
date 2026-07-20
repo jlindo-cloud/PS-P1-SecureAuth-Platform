@@ -12,12 +12,20 @@ credenciales de correo, pero en producción es obligatorio
 configurar SMTP (ver comprobación en app/__init__.py).
 """
 
+import socket
 import smtplib
 import ssl
 from email.message import EmailMessage
 
 from flask import current_app
 
+# --- PARCHE PARA RENDER (FORZAR IPv4) ---
+# Evita el error 'Network is unreachable' forzando la resolución de nombres vía IPv4
+orig_getaddrinfo = socket.getaddrinfo
+def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    return orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+socket.getaddrinfo = patched_getaddrinfo
+# ----------------------------------------
 
 def mail_is_configured() -> bool:
     cfg = current_app.config
@@ -62,7 +70,7 @@ def send_email(
     context = ssl.create_default_context()
 
     try:
-        if cfg["SMTP_USE_SSL"]:
+        if cfg.get("SMTP_USE_SSL"):
             with smtplib.SMTP_SSL(
                 cfg["SMTP_HOST"],
                 cfg["SMTP_PORT"],
@@ -100,7 +108,7 @@ def send_email(
         # para no bloquear la demostración. En producción NO
         # se hace: el código nunca debe quedar en los logs de
         # un servidor accesible.
-        if current_app.config["ENVIRONMENT"] != "production":
+        if current_app.config.get("ENVIRONMENT") != "production":
             current_app.logger.warning(
                 "[SMTP FALLÓ — MODO DESARROLLO] Para %s | %s\n%s",
                 to_address,
