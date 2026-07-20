@@ -1,17 +1,4 @@
-# Despliegue en Render (plan gratuito)
-#
-# Uso:
-#   1. Subir el proyecto a GitHub.
-#   2. En render.com: New > Blueprint > seleccionar el repo.
-#   3. Render lee este archivo y crea el servicio web + la
-#      base de datos PostgreSQL.
-#   4. Completar en el panel las variables marcadas como
-#      sync: false (secretos: SMTP y pepper).
-#
-# HTTPS con certificado válido y HSTS quedan activos de
-# forma automática en el dominio *.onrender.com.
-
-version: "1" # <-- ESTA LÍNEA ES OBLIGATORIA PARA QUE RENDER LO ACEPTE
+version: "1"
 
 services:
   - type: web
@@ -19,17 +6,11 @@ services:
     runtime: python
     plan: free
     region: oregon
-    buildCommand: pip install -r requirements.txt
-    # Migración y carga inicial en la fase de pre-deploy, NO en
-    # el arranque de la aplicación: el proceso que sirve tráfico
-    # nunca altera el esquema (SECURITY.md del curso).
-    preDeployCommand: flask --app run.py db upgrade && python seed.py
+    # Se añade la migración y la carga inicial al final del buildCommand usando '&&'
+    buildCommand: pip install -r requirements.txt && flask --app run.py db upgrade && python seed.py
     startCommand: >-
       gunicorn --bind=0.0.0.0:$PORT --workers=2 --threads=4
       --timeout=120 --access-logfile=- --error-logfile=- "run:app"
-    # Sonda dedicada y exenta de rate limiting: /catalogo estaba
-    # limitado y el verificador recibía 429, lo que Render
-    # interpretaba como instancia caída.
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
@@ -40,27 +21,22 @@ services:
         value: "0"
       - key: SESSION_MINUTES
         value: "30"
-      # Secretos generados automáticamente por Render
       - key: FLASK_SECRET_KEY
         generateValue: true
       - key: AUDIT_HMAC_KEY
         generateValue: true
       - key: PASSWORD_PEPPER
         generateValue: true
-      # Base de datos administrada
       - key: DATABASE_URL
         fromDatabase:
           name: secureauth-db
           property: connectionString
-      # ---------------------------------------------------
-      # Correo del segundo factor
-      # ---------------------------------------------------
       - key: BREVO_API_KEY
         sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: SMTP_HOST
-        value: smtp.gmail.com
+        value: ://gmail.com
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USER
@@ -69,7 +45,6 @@ services:
         sync: false
       - key: MAIL_FROM
         sync: false
-      # Administrador inicial: correo REAL
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
