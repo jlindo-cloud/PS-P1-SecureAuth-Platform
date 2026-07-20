@@ -1,5 +1,5 @@
 """
-Datos de demostración para SecureAuth Store.
+Datos iniciales para SecureAuth Store.
 
 Crea el catálogo completo (12 productos con sus imágenes) y
 dos usuarios locales de prueba con contraseñas hasheadas
@@ -20,20 +20,77 @@ from app.models import Product, User
 app = create_app()
 
 
+import os
+
+# ---------------------------------------------------------
+# Usuarios
+#
+# LOCAL (APP_ENV != production): se crean dos cuentas de
+# prueba con contraseñas conocidas. Sirven para desarrollar
+# sin depender del correo, porque en local el código OTP se
+# imprime en la consola.
+#
+# PRODUCCIÓN: esas cuentas NO se crean. Sus direcciones
+# (@example.com) no existen, así que nunca recibirían el
+# segundo factor, y sus contraseñas están publicadas en el
+# repositorio. En su lugar se crea un único administrador a
+# partir de ADMIN_EMAIL y ADMIN_PASSWORD, que deben ser un
+# correo real y una contraseña propia.
+# ---------------------------------------------------------
+
+ES_PRODUCCION = (
+    os.getenv("APP_ENV", "development").lower() == "production"
+)
+
 DEMO_USERS = [
     {
         "email": "admin@example.com",
-        "name": "Administrador Demo",
+        "name": "Administrador Local",
         "password": "Admin#Secure2026",
         "role": "Admin",
     },
     {
         "email": "cliente@example.com",
-        "name": "Cliente Demo",
+        "name": "Cliente Local",
         "password": "Cliente#Secure2026",
         "role": "Customer",
     },
 ]
+
+
+def usuarios_a_crear():
+    """Devuelve las cuentas que corresponden al entorno."""
+    if not ES_PRODUCCION:
+        return DEMO_USERS
+
+    email = (os.getenv("ADMIN_EMAIL") or "").strip().lower()
+    password = os.getenv("ADMIN_PASSWORD") or ""
+
+    if not email or not password:
+        print(
+            "AVISO: no se creó ningún administrador.\n"
+            "  Define ADMIN_EMAIL y ADMIN_PASSWORD en el\n"
+            "  entorno y vuelve a ejecutar el despliegue, o\n"
+            "  regístrate desde /auth/registro y promueve esa\n"
+            "  cuenta a Admin desde la base de datos."
+        )
+        return []
+
+    if len(password) < 12:
+        print(
+            "AVISO: ADMIN_PASSWORD tiene menos de 12 "
+            "caracteres. No se creó el administrador."
+        )
+        return []
+
+    return [
+        {
+            "email": email,
+            "name": os.getenv("ADMIN_NAME", "Administrador"),
+            "password": password,
+            "role": "Admin",
+        }
+    ]
 
 
 # Las imágenes viven en app/static/uploads/ y se versionan
@@ -156,7 +213,7 @@ with app.app_context():
     from app.auth import hash_password, normalize_email
 
     created_users = 0
-    for demo in DEMO_USERS:
+    for demo in usuarios_a_crear():
         email = normalize_email(demo["email"])
         if db.session.query(User).filter_by(email=email).first() is None:
             db.session.add(
@@ -186,9 +243,13 @@ with app.app_context():
     print(f"Productos creados: {created_products} "
           f"(total en catálogo: {Product.query.count()})")
 
-    if created_users:
-        print(f"Usuarios demo creados: {created_users}")
+    if created_users and not ES_PRODUCCION:
+        print(f"Usuarios locales creados: {created_users}")
         print("  admin@example.com   / Admin#Secure2026")
         print("  cliente@example.com / Cliente#Secure2026")
+        print("  El código OTP aparece en esta consola.")
+    elif created_users:
+        print(f"Administrador creado: {created_users}")
+        print("  Recibirá el código de verificación por correo.")
     else:
-        print("Los usuarios demo ya existían.")
+        print("No se crearon usuarios nuevos.")

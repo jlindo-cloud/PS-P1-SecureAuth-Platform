@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Detección de anomalías{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div>
+    <span class="eyebrow">Zero-Trust</span>
+    <h1>Detección de anomalías</h1>
+  </div>
+  <div class="heading-actions">
+    <a class="button button-secondary" href="{{ url_for('admin.dashboard') }}">
+      Productos
+    </a>
+    <a class="button button-secondary" href="{{ url_for('admin.audit_logs') }}">
+      Auditoría
+    </a>
+  </div>
+</div>
+
+<div class="risk-summary">
+  <div class="risk-card risk-high">
+    <strong>{{ resumen.high }}</strong>
+    <span>Riesgo alto</span>
+  </div>
+  <div class="risk-card risk-medium">
+    <strong>{{ resumen.medium }}</strong>
+    <span>Riesgo medio</span>
+  </div>
+  <div class="risk-card risk-low">
+    <strong>{{ resumen.low }}</strong>
+    <span>Riesgo bajo</span>
+  </div>
+</div>
+
+<p class="muted-note">
+  Cada intento de acceso se evalúa contra el patrón de
+  comportamiento habitual de la cuenta: hora, día, red,
+  dispositivo e intentos fallidos recientes. Con historial
+  suficiente el puntaje combina reglas heurísticas con
+  IsolationForest y Local Outlier Factor. Un riesgo alto
+  endurece el desafío de verificación en dos pasos.
+</p>
+
+{% if attempts %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Correo</th>
+        <th>Resultado</th>
+        <th>Riesgo</th>
+        <th>Puntaje</th>
+        <th>Método</th>
+        <th>Factores</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in attempts %}
+      <tr>
+        <td>{{ a.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td>{{ a.email }}</td>
+        <td>
+          {% if a.success %}
+            <span class="badge">Correcto</span>
+          {% else %}
+            <span class="badge badge-danger">Fallido</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if a.risk_level == 'high' %}
+            <span class="badge badge-danger">Alto</span>
+          {% elif a.risk_level == 'medium' %}
+            <span class="badge badge-warning">Medio</span>
+          {% elif a.risk_level == 'low' %}
+            <span class="badge">Bajo</span>
+          {% else %}
+            <span class="badge badge-muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if a.risk_score is not none %}
+            <div class="score-bar">
+              <span style="width: {{ (a.risk_score * 100)|round|int }}%"></span>
+            </div>
+            <small>{{ '%.2f'|format(a.risk_score) }}</small>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td><code>{{ a.risk_method or '—' }}</code></td>
+        <td class="factors">{{ a.risk_factors or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <h2>Sin intentos registrados</h2>
+  <p>Los accesos aparecerán aquí a medida que se produzcan.</p>
+</div>
+{% endif %}
+{% endblock %}

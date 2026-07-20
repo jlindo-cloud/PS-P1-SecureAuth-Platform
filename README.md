@@ -6,7 +6,10 @@
 ![Flask](https://img.shields.io/badge/Flask-3.1-000000?logo=flask&logoColor=white)
 ![Argon2id](https://img.shields.io/badge/Hash-Argon2id-4B275F)
 ![MFA](https://img.shields.io/badge/MFA-OTP%20por%20correo-0aa884)
-![Tests](https://img.shields.io/badge/tests-32%20passed-2ea44f)
+![ML](https://img.shields.io/badge/ML-IsolationForest%20%2B%20LOF-F7931E?logo=scikitlearn&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-44%20passed-2ea44f)
+![OWASP](https://img.shields.io/badge/OWASP%20Top%2010-2021-000000?logo=owasp&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
 Proyecto final del curso **DD281 Programación Segura** —
 Universidad Autónoma del Perú.
@@ -45,12 +48,11 @@ cada uno respaldado por pruebas automatizadas.
   - [2.4 Crear el servicio en Render](#24-crear-el-servicio-en-render)
   - [2.5 Completar las variables de correo](#25-completar-las-variables-de-correo)
   - [2.6 Qué hace el despliegue](#26-qué-hace-el-despliegue)
-  - [2.7 Asegurar la instancia pública](#27-asegurar-la-instancia-pública)
+  - [2.7 Administrador de producción](#27-administrador-de-producción)
   - [2.8 Verificar el despliegue](#28-verificar-el-despliegue)
   - [2.9 Limitaciones del plan gratuito](#29-limitaciones-del-plan-gratuito)
   - [2.10 Problemas frecuentes en el despliegue](#210-problemas-frecuentes-en-el-despliegue)
   - [2.11 Actualizar el despliegue](#211-actualizar-el-despliegue)
-- [Contribuir](#contribuir)
 - [Contexto académico](#contexto-académico)
 
 ---
@@ -62,7 +64,7 @@ cada uno respaldado por pruebas automatizadas.
 | **1. Transporte** | HTTPS forzado, HSTS (1 año, preload), SMTP con STARTTLS | Flask-Talisman, `app/mailer.py` |
 | **2. Almacenamiento** | Argon2id + salt único por usuario + **pepper** global fuera de la BD | `app/auth.py`, `PASSWORD_PEPPER` |
 | **3. Sesión** | Cookies `HttpOnly` + `Secure` + `SameSite` + prefijo `__Host-`, rotación anti-fijación | `app/config.py` |
-| **4. Aplicación** | **MFA por OTP al correo**, registro verificado, política de contraseñas, rate limiting, respuestas anti-enumeración | `app/auth.py`, Flask-Limiter |
+| **4. Aplicación** | **MFA por OTP al correo**, **motor Zero-Trust de detección de anomalías (ML)**, registro verificado, política de contraseñas, rate limiting, respuestas anti-enumeración | `app/auth.py`, `app/anomaly_detector.py` |
 | **5. Infraestructura** | CSP, `nosniff`, `X-Frame-Options: DENY`, CSRF, validación estricta de entradas | Flask-Talisman, Flask-WTF |
 
 Además, el **carrito y el pago** aplican el mismo principio de
@@ -74,6 +76,23 @@ contra listas permitidas y de la tarjeta solo persisten los
 Detalle completo de cada control, con el archivo y la prueba que
 lo respalda, en **[`SECURITY.md`](SECURITY.md)**.
 
+### Cobertura del OWASP Top 10
+
+Los cinco niveles cubren las diez categorías del **OWASP Top 10
+(2021)**. El mapeo completo —categoría, control, archivo y
+prueba que lo verifica— está en **[`OWASP.md`](OWASP.md)**.
+
+| Categoría | Estado | Categoría | Estado |
+|---|---|---|---|
+| A01 Control de acceso | Cubierto | A06 Componentes vulnerables | Cubierto (CI) |
+| A02 Fallos criptográficos | Cubierto | A07 Autenticación | Cubierto |
+| A03 Inyección | Cubierto | A08 Integridad | Cubierto |
+| A04 Diseño inseguro | Cubierto | A09 Registro y monitoreo | Cubierto* |
+| A05 Configuración incorrecta | Cubierto | A10 SSRF | No aplica |
+
+\* Sin alertado automático: el monitoreo es por consulta del
+administrador. Documentado como limitación en `OWASP.md`.
+
 ---
 
 ## Stack
@@ -83,6 +102,7 @@ lo respalda, en **[`SECURITY.md`](SECURITY.md)**.
 | Backend | Python 3.12 + Flask 3.1 |
 | Hash de contraseñas | Argon2id (`argon2-cffi`) |
 | Segundo factor | OTP de 6 dígitos por SMTP |
+| Detección de anomalías | scikit-learn (IsolationForest + LOF) |
 | Formularios / CSRF | Flask-WTF |
 | Rate limiting | Flask-Limiter |
 | Cabeceras de seguridad | Flask-Talisman |
@@ -107,9 +127,10 @@ secureauth-store/
 ├── app/
 │   ├── __init__.py         # Factory, Talisman, blueprints
 │   ├── auth.py             # Login, pepper, MFA/OTP, registro
+│   ├── anomaly_detector.py # Motor Zero-Trust (reglas + ML)
 │   ├── mailer.py           # Envío SMTP con STARTTLS
 │   ├── config.py           # Configuración por entorno
-│   ├── models.py           # User, Product, Order, AuditLog
+│   ├── models.py           # User, Product, Order, AuditLog, LoginAttempt
 │   ├── store.py            # Catálogo, carrito, checkout
 │   ├── admin.py            # Panel de administración (RBAC)
 │   ├── audit.py            # Auditoría firmada con HMAC
@@ -119,13 +140,17 @@ secureauth-store/
 │   ├── templates/          # Vistas Jinja2
 │   └── static/
 │       ├── css/app.css
+│       ├── js/checkout.js  # Alterna campos por método de pago
 │       └── uploads/        # 12 imágenes del catálogo
 │
 ├── migrations/             # Esquema versionado
-├── tests/                  # 29 pruebas de seguridad
+├── tests/                  # 44 pruebas de seguridad
 ├── azure/                  # Scripts para despliegue en Azure
+├── check_smtp.py           # Diagnóstico de la configuración de correo
 ├── SECURITY.md             # Los 5 niveles en detalle
-└── ARCHITECTURE.md
+├── OWASP.md                # Mapeo del OWASP Top 10 (2021)
+├── ARCHITECTURE.md
+└── LICENSE
 ```
 
 ---
@@ -385,6 +410,21 @@ al formulario de pago con un valor bajo. El pedido se crea
 igualmente con el total correcto, porque el servidor lo
 recalcula desde los precios de la base de datos.
 
+### Motor de detección de anomalías
+
+1. Con sesión de administrador, entrá a
+   <http://localhost:5000/admin/anomalies>.
+2. Vas a ver cada intento de acceso con su puntaje de riesgo,
+   el método aplicado (`rules` o `isolation_forest+lof`) y los
+   factores detectados.
+3. **Para provocar un riesgo alto:** fallá el login 4 o 5
+   veces seguidas y luego ingresá bien. El intento correcto
+   aparecerá como riesgo alto, y el desafío OTP se endurece a
+   2 minutos y 2 intentos en vez de 5 y 5.
+
+> El OTP se exige siempre. El motor endurece el segundo
+> factor, no lo reemplaza.
+
 ### Panel de administración
 
 Con `admin@example.com` entrá a
@@ -394,7 +434,7 @@ responder **403**.
 ## 1.9 Pruebas automáticas
 
 ```bash
-pytest -q     # 32 pruebas
+pytest -q     # 44 pruebas
 pytest -v     # detalle una por una
 ```
 
@@ -409,6 +449,10 @@ pytest -v     # detalle una por una
   acotadas al stock, método y proveedor validados contra listas
   permitidas, datos de tarjeta no persistidos, voucher ajeno
   inaccesible.
+- **Detección de anomalías** — IP almacenada hasheada, escalada
+  del riesgo ante dispositivo desconocido y fallos recientes,
+  degradación a reglas sin scikit-learn, y garantía de que el
+  modelo no puede enmascarar una regla dura.
 - **Aplicación** — cabeceras de seguridad, RBAC, SQLi tratada
   como dato y no como código, rechazo de SVG, CSRF, IDOR de
   carrito.
@@ -550,8 +594,8 @@ git commit -m "feat: entrega final con MFA por correo y despliegue"
 git push -u origin feat/entrega-final
 ```
 
-Luego abrir el PR hacia el repositorio del grupo. Ver
-[Contribuir](#contribuir).
+Luego abrir el Pull Request hacia el repositorio del grupo
+desde GitHub.
 
 ## 2.4 Crear el servicio en Render
 
@@ -608,28 +652,44 @@ Según `render.yaml`:
 La URL queda como `https://secureauth-store.onrender.com`
 (Render agrega un sufijo si el nombre está tomado).
 
-## 2.7 Asegurar la instancia pública
+## 2.7 Administrador de producción
 
-> 🚨 **Paso obligatorio.** `seed.py` crea `admin@example.com`
-> con una contraseña publicada en este README. En una URL
-> pública, cualquiera que lea el repositorio entra como
-> administrador.
+En **local**, `seed.py` crea `admin@example.com` y
+`cliente@example.com` con contraseñas conocidas. Sirven porque
+el código OTP se imprime en la consola.
 
-1. Registrate en la app con tu correo real y completá el OTP.
-2. Promové esa cuenta a Admin. En Render: panel de la base de
-   datos → **Connect** → copiar el comando `psql`:
+En **producción esas cuentas no se crean**, por dos razones:
+sus direcciones `@example.com` no existen —nunca recibirían el
+segundo factor— y sus contraseñas están publicadas en este
+README.
 
-   ```sql
-   UPDATE users SET role = 'Admin'
-   WHERE email = 'tu-correo@gmail.com';
-   ```
+En su lugar, `seed.py` crea un único administrador a partir de
+variables de entorno. En Render → **Environment**:
 
-3. Desactivá las cuentas de demostración:
+| Variable | Valor |
+|---|---|
+| `ADMIN_EMAIL` | tu correo **real** (ahí llegará el código) |
+| `ADMIN_PASSWORD` | contraseña propia, mínimo 12 caracteres |
+| `ADMIN_NAME` | nombre a mostrar (opcional) |
 
-   ```sql
-   UPDATE users SET active = false
-   WHERE email IN ('admin@example.com', 'cliente@example.com');
-   ```
+> Si no las definís, el despliegue no falla: simplemente no
+> crea administrador. Podés registrarte desde `/auth/registro`
+> con tu correo y promover esa cuenta después:
+>
+> ```sql
+> UPDATE users SET role = 'Admin'
+> WHERE email = 'tu-correo@gmail.com';
+> ```
+
+### Si ya desplegaste con las cuentas de ejemplo
+
+Conectate a la base desde Render (**Connect** → `psql`) y
+desactivalas:
+
+```sql
+UPDATE users SET active = false
+WHERE email IN ('admin@example.com', 'cliente@example.com');
+```
 
 Quedan en la base para preservar la integridad referencial de
 la auditoría, pero no pueden iniciar sesión.
@@ -689,7 +749,9 @@ Supabase, cambiando solo `DATABASE_URL`.
 | `PASSWORD_PEPPER es obligatorio` | No se generó el secreto | Revisar `render.yaml` |
 | `Can't load plugin: sqlalchemy.dialects:postgres` | Esquema antiguo de URL | Verificar que se desplegó la versión con la normalización en `config.py` |
 | `SMTPAuthenticationError (535 BadCredentials)` | Contraseña de aplicación incorrecta | Ver [diagnóstico de correo](#diagnóstico-de-correo) |
-| El correo no llega | Filtro de spam | Revisar spam y agregar el emisor a contactos |
+| El correo no llega a una cuenta `@example.com` | Esa dirección no existe | Usar un correo real: ver [2.7](#27-administrador-de-producción) |
+| El correo no llega a un correo real | SMTP mal configurado o filtro de spam | Revisar los logs de Render buscando `mailer`; revisar spam |
+| "No pudimos enviar el código de verificación" | El envío falló en producción | Verificar `SMTP_USER` y `SMTP_PASSWORD` en Render |
 | `Application exited early` | Falló el pre-deploy | Revisar el log de esa fase |
 | Deploy a Azure falla en un fork | GitHub no propaga secrets a forks | Comportamiento esperado; los checks relevantes son `test` y `security-checks` |
 
@@ -712,45 +774,6 @@ Las migraciones se aplican solas en el pre-deploy.
 
 ---
 
-## Contribuir
-
-El proyecto sigue un flujo de forks encadenados:
-
-```
-RubenCarty (profesor)  ←  anaastoac (repo del grupo)  ←  forks individuales
-```
-
-Cada integrante trabaja sobre su propio fork del repositorio
-del grupo y envía Pull Request hacia él. La consolidación hacia
-el repositorio del profesor se realiza desde ahí.
-
-```bash
-# configurar el remoto del repo del grupo
-git remote add upstream https://github.com/anaastoac/PS-P1-SecureAuth-Platform.git
-
-# sincronizar antes de empezar
-git fetch upstream
-git merge upstream/main
-
-# trabajar en una rama por funcionalidad
-git checkout -b feat/nombre-del-modulo
-git add .
-git commit -m "feat: descripción del cambio"
-git push -u origin feat/nombre-del-modulo
-```
-
-Luego abrir el PR desde GitHub hacia
-`anaastoac/PS-P1-SecureAuth-Platform:main`.
-
-### Antes de abrir un PR
-
-- [ ] `pytest -q` pasa completo
-- [ ] `git ls-files` no incluye `.env`, `.venv` ni `__pycache__`
-- [ ] No hay secretos ni credenciales en el código
-- [ ] Los cambios de seguridad están documentados en `SECURITY.md`
-
----
-
 ## Contexto académico
 
 Base aplicada del trabajo de investigación:
@@ -763,3 +786,9 @@ Base aplicada del trabajo de investigación:
 Curso **DD281 Programación Segura** — Universidad Autónoma del
 Perú. La tienda virtual es el caso de uso donde se implementa y
 demuestra el motor de autenticación descrito en el paper.
+
+---
+
+## Licencia
+
+MIT. Ver [`LICENSE`](LICENSE).

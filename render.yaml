@@ -18,10 +18,18 @@ services:
     plan: free
     region: oregon
     buildCommand: pip install -r requirements.txt
-    # Se eliminó preDeployCommand porque no es compatible con el plan gratuito.
-    # Ahora las migraciones y la carga de datos se ejecutan justo antes de iniciar Gunicorn.
+    # Migración y carga inicial en la fase de pre-deploy, NO en
+    # el arranque de la aplicación: el proceso que sirve tráfico
+    # nunca altera el esquema (SECURITY.md del curso).
+    #
+    # En un entorno con separación estricta de identidades, esta
+    # línea se comenta y las migraciones se ejecutan a mano desde
+    # el Shell de Render con una identidad distinta a la de la
+    # aplicación:
+    #     flask --app run.py db upgrade
+    preDeployCommand: flask --app run.py db upgrade && python seed.py
     startCommand: >-
-      flask --app run.py db upgrade && python seed.py && gunicorn --bind=0.0.0.0:$PORT --workers=2 --threads=4
+      gunicorn --bind=0.0.0.0:$PORT --workers=2 --threads=4
       --timeout=120 --access-logfile=- --error-logfile=- "run:app"
     healthCheckPath: /catalogo
     envVars:
@@ -58,6 +66,15 @@ services:
       - key: SMTP_PASSWORD
         sync: false
       - key: MAIL_FROM
+        sync: false
+
+      # Administrador inicial: correo REAL, porque recibirá
+      # el código de verificación. Completar en el panel.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
         sync: false
 
       - key: OTP_TTL_SECONDS

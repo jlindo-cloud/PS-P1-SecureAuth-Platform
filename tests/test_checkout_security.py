@@ -61,7 +61,7 @@ def test_total_se_calcula_en_el_servidor(
         data={**VALID_CARD, "total": "1.00"},
     )
 
-    order = db.session.query(Order).first()
+    order = db.session.query(Order).order_by(Order.id.desc()).first()
     assert order is not None
     # 2 unidades x 100.00, no el 1.00 enviado por el cliente.
     assert Decimal(str(order.total)) == Decimal("200.00")
@@ -108,7 +108,7 @@ def test_no_se_almacenan_datos_sensibles_de_tarjeta(
     nunca el PAN completo, el CVV ni el titular."""
     cart_with_item.post("/checkout", data=VALID_CARD)
 
-    order = db.session.query(Order).first()
+    order = db.session.query(Order).order_by(Order.id.desc()).first()
     assert order is not None
 
     guardado = " ".join(
@@ -180,7 +180,7 @@ def test_voucher_ajeno_no_es_accesible(
 ):
     """Un pedido solo lo ve su dueño (protección IDOR)."""
     cart_with_item.post("/checkout", data=VALID_CARD)
-    order = db.session.query(Order).first()
+    order = db.session.query(Order).order_by(Order.id.desc()).first()
 
     # Otra sesión, otro usuario.
     with client.session_transaction() as sess:
@@ -242,3 +242,37 @@ def test_producto_sin_stock_no_ofrece_compra(
 
     listado = login_customer.get("/catalogo").data.decode()
     assert "Sin stock" in listado
+
+
+def test_metodo_y_proveedor_deben_ser_coherentes(
+    cart_with_item
+):
+    """Ocultar campos en el navegador es solo ayuda visual: el
+    servidor rechaza un proveedor que no corresponde al método
+    aunque el formulario llegue completo."""
+    cart_with_item.post(
+        "/checkout",
+        data={
+            "payment_method": "wallet",
+            "provider": "Mastercard",
+            "phone": "999999999",
+            "validation_token": "123456",
+        },
+    )
+
+    assert db.session.query(Order).count() == 0
+
+    cart_with_item.post(
+        "/checkout",
+        data={
+            "payment_method": "card",
+            "provider": "Yape",
+            **{
+                k: v
+                for k, v in VALID_CARD.items()
+                if k not in ("payment_method", "provider")
+            },
+        },
+    )
+
+    assert db.session.query(Order).count() == 0

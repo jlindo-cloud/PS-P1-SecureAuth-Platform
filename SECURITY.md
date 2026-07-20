@@ -91,6 +91,75 @@ y está cubierto por la suite de pruebas (`pytest -q`).
   contenido real, rechazo de SVG, recodificación que elimina
   metadatos, nombre final UUID.
 
+## Motor Zero-Trust de detección de anomalías
+
+La autenticación no termina al validar la contraseña: cada
+intento se evalúa contra el patrón de comportamiento habitual
+de la cuenta (`app/anomaly_detector.py`).
+
+**Características extraídas por intento**
+
+| Característica | Qué mide |
+|---|---|
+| `hour_of_day` | Hora del acceso (0-23) |
+| `day_of_week` | Día de la semana |
+| `minutes_since_last_login` | Tiempo desde el último acceso correcto |
+| `failed_attempts_recent` | Fallos en los últimos 15 minutos |
+| `ip_changed` | La red no aparece en accesos previos |
+| `user_agent_changed` | El dispositivo es nuevo |
+| `new_device` | Red **y** dispositivo desconocidos |
+
+**Enfoque híbrido**
+
+1. **Reglas heurísticas**, siempre disponibles. Cubren el
+   *cold start*: un usuario sin historial también recibe un
+   veredicto.
+2. **Modelos no supervisados** — `IsolationForest` y
+   `LocalOutlierFactor` — que aprenden la distribución normal
+   de accesos de cada cuenta y señalan las desviaciones. No
+   requieren ejemplos etiquetados como ataque.
+
+**El modelo solo puede elevar el riesgo, nunca reducirlo.**
+Los modelos observan hora y día de la semana; sin ese piso,
+una ráfaga de fallos desde un dispositivo desconocido (0.80
+por reglas) quedaría diluida a riesgo medio solo porque el
+horario es el habitual. Una señal dura de seguridad no puede
+ser enmascarada por una estadística de comportamiento
+(`test_el_ml_no_puede_enmascarar_una_regla_dura`).
+
+**Qué hace el sistema con el veredicto**
+
+| Riesgo | Efecto |
+|---|---|
+| Bajo | Segundo factor estándar: 5 minutos, 5 intentos |
+| Medio | Igual, con el nivel registrado en la auditoría |
+| Alto | Desafío endurecido: 2 minutos y 2 intentos |
+
+> El OTP **se exige siempre**, cualquiera sea el riesgo. El
+> motor endurece el segundo factor, no lo sustituye ni lo
+> vuelve opcional: un análisis de comportamiento puede
+> equivocarse, la posesión del correo no.
+
+**Privacidad de los datos de comportamiento**
+
+Las direcciones IP se almacenan **hasheadas** (SHA-256
+truncado a 32 caracteres). El motor solo necesita saber si la
+red es la misma de siempre, no cuál es. La tabla
+`login_attempts` no contiene ningún dato personal en claro
+más allá del correo.
+
+**Resiliencia**
+
+- Si `scikit-learn` no está instalado, el motor degrada a
+  reglas en vez de fallar.
+- Si el motor lanza una excepción, el login continúa con
+  riesgo `unknown`: el componente de análisis nunca puede
+  dejar a los usuarios fuera del sistema.
+
+El panel `/admin/anomalies` (solo rol Admin) muestra el
+historial con puntaje, nivel, método aplicado y factores
+detectados.
+
 ## Seguridad del carrito y el pago
 
 El proceso de compra aplica los mismos principios que la
