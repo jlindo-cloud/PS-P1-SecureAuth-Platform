@@ -7,7 +7,7 @@
 ![Argon2id](https://img.shields.io/badge/Hash-Argon2id-4B275F)
 ![MFA](https://img.shields.io/badge/MFA-OTP%20por%20correo-0aa884)
 ![ML](https://img.shields.io/badge/ML-IsolationForest%20%2B%20LOF-F7931E?logo=scikitlearn&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-46%20passed-2ea44f)
+![Tests](https://img.shields.io/badge/tests-50%20passed-2ea44f)
 ![OWASP](https://img.shields.io/badge/OWASP%20Top%2010-2021-000000?logo=owasp&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -143,7 +143,7 @@ secureauth-store/
 │       └── uploads/        # 12 imágenes del catálogo
 │
 ├── migrations/             # Esquema versionado
-├── tests/                  # 46 pruebas de seguridad
+├── tests/                  # 50 pruebas de seguridad
 ├── azure/                  # Scripts para despliegue en Azure
 ├── SECURITY.md             # Los 5 niveles en detalle
 ├── OWASP.md                # Mapeo del OWASP Top 10 (2021)
@@ -431,7 +431,7 @@ responder **403**.
 ## 1.9 Pruebas automáticas
 
 ```bash
-pytest -q     # 46 pruebas
+pytest -q     # 50 pruebas
 pytest -v     # detalle una por una
 ```
 

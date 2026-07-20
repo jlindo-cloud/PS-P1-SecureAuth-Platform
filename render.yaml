@@ -31,7 +31,10 @@ services:
     startCommand: >-
       gunicorn --bind=0.0.0.0:$PORT --workers=2 --threads=4
       --timeout=120 --access-logfile=- --error-logfile=- "run:app"
-    healthCheckPath: /catalogo
+    # Sonda dedicada y exenta de rate limiting: /catalogo estaba
+    # limitado y el verificador recibía 429, lo que Render
+    # interpretaba como instancia caída.
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.7"
