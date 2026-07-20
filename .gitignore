@@ -1,12 +1,16 @@
-__pycache__/
-*.pyc
+.venv*/
 .venv/
-venv/
-env/
+__pycache__/
+*.py[cod]
 .env
-instance/secureauth.db
-instance/uploads/*
-!instance/uploads/.gitkeep
+*.db
+instance/
 .pytest_cache/
-*.egg-info/
-.DS_Store
+.coverage
+htmlcov/
+.vscode/settings.json
+*.log
+
+# Las imágenes de demostración SÍ se versionan
+!app/static/uploads/
+!app/static/uploads/**
