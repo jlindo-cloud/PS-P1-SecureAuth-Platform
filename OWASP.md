@@ -7,7 +7,7 @@ cada control y la prueba automatizada que lo verifica.
 Ejecutar la evidencia completa:
 
 ```bash
-pytest -q     # 46 pruebas
+pytest -q     # 50 pruebas
 ```
 
 ---

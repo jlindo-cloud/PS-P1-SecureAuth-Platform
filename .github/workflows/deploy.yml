@@ -33,7 +33,20 @@ jobs:
         run: pytest -q
 
   deploy:
-    if: github.event_name == 'push'
+    # El despliegue a Azure solo corre donde hay credenciales.
+    #
+    # GitHub no propaga secrets a los forks, por diseño: si lo
+    # hiciera, cualquiera podría forkear el repositorio y
+    # obtener las credenciales de producción del dueño. Sin
+    # esta condición el job falla siempre en cada fork con
+    # "Not all values are present".
+    #
+    # Para habilitarlo: Settings > Secrets and variables >
+    # Actions > Variables > crear AZURE_DEPLOY_ENABLED = true,
+    # y cargar los tres secrets AZURE_*.
+    if: >-
+      github.event_name == 'push' &&
+      vars.AZURE_DEPLOY_ENABLED == 'true'
     needs: test
     runs-on: ubuntu-latest
     environment: production

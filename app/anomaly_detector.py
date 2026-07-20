@@ -160,7 +160,22 @@ def _rule_based_score(features):
     score = 0.0
     factors = []
 
-    if features["failed_attempts_recent"] >= 3:
+    # Escalado por ráfaga de fallos.
+    #
+    # El tramo de 6 o más existe porque sin él el puntaje
+    # máximo alcanzable en horario diurno era 0.70, por debajo
+    # del umbral de riesgo alto (0.72): una fuerza bruta desde
+    # un dispositivo desconocido a las 3 de la tarde nunca
+    # activaba el desafío endurecido, y a las 3 de la mañana sí.
+    # El nivel de riesgo no puede depender de la hora del reloj
+    # cuando el patrón de ataque es inequívoco.
+    if features["failed_attempts_recent"] >= 6:
+        score += 0.50
+        factors.append(
+            f"{features['failed_attempts_recent']} intentos "
+            "fallidos recientes (ráfaga)"
+        )
+    elif features["failed_attempts_recent"] >= 3:
         score += 0.35
         factors.append(f"{features['failed_attempts_recent']} intentos fallidos recientes")
     elif features["failed_attempts_recent"] >= 1:

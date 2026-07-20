@@ -312,7 +312,38 @@ def test_el_ml_no_puede_enmascarar_una_regla_dura(
         usuario.email, hash_ip(IP_NUEVA), UA_NUEVO,
     )
 
+    # El veredicto no depende de la hora del reloj: la ráfaga
+    # de fallos más el dispositivo desconocido bastan.
     assert puntaje_reglas >= RISK_THRESHOLDS["high"]
     # Aunque el modelo intervenga, el veredicto no baja.
     assert riesgo["score"] >= puntaje_reglas
     assert riesgo["risk_level"] == "high"
+
+
+def test_el_riesgo_no_depende_de_la_hora_del_reloj(app, usuario):
+    """Una ráfaga de fallos desde un dispositivo desconocido es
+    riesgo alto a cualquier hora.
+
+    Antes del escalado por ráfaga, el puntaje máximo diurno era
+    0.70 contra un umbral de 0.72: el mismo ataque activaba el
+    desafío endurecido de madrugada y no lo activaba por la
+    tarde.
+    """
+    from app.anomaly_detector import RISK_THRESHOLDS, _rule_based_score
+
+    for hora in (3, 14, 21):
+        features = {
+            "hour_of_day": hora,
+            "day_of_week": 2,
+            "minutes_since_last_login": 60.0,
+            "failed_attempts_recent": 6,
+            "ip_changed": 1,
+            "user_agent_changed": 1,
+            "new_device": 1,
+        }
+
+        puntaje, _ = _rule_based_score(features)
+
+        assert puntaje >= RISK_THRESHOLDS["high"], (
+            f"a las {hora}h el puntaje fue {puntaje}"
+        )

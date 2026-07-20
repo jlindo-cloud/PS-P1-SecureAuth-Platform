@@ -142,6 +142,33 @@ def create_app(test_config: dict | None = None) -> Flask:
         response.headers.add("Vary", "Cookie")
         return response
 
+    # ---------------------------------------------------------
+    # Exenciones de rate limiting
+    #
+    # Los archivos estáticos no son un vector de abuso y sí
+    # consumían cuota: una sola carga del catálogo son 12
+    # imágenes más el CSS y el JS. Contarlos agotaba el límite
+    # de un usuario legítimo en pocas visitas.
+    # ---------------------------------------------------------
+    limiter.exempt(app.view_functions["static"])
+
+    # ---------------------------------------------------------
+    # Sonda de salud para la plataforma de despliegue
+    #
+    # Debe estar EXENTA del rate limiting: el verificador de
+    # Render consulta desde una IP fija cada pocos segundos y,
+    # contra un endpoint limitado, terminaba recibiendo 429.
+    # La plataforma interpretaba ese 429 como instancia caída y
+    # reiniciaba el servicio en bucle.
+    #
+    # No consulta la base de datos ni expone información: solo
+    # confirma que el proceso responde.
+    # ---------------------------------------------------------
+    @app.get("/health")
+    @limiter.exempt
+    def health():
+        return {"status": "ok"}, 200
+
     @app.context_processor
     def inject_session_user():
         user = session.get("user")

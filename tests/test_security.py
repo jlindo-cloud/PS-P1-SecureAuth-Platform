@@ -64,3 +64,35 @@ def test_cart_idor_is_blocked(app, login_customer):
         item_id = other_item.id
     response = login_customer.post(f"/carrito/actualizar/{item_id}", data={"quantity": 2})
     assert response.status_code == 404
+
+
+def test_health_check_no_esta_limitado(client):
+    """La sonda de salud debe responder siempre 200.
+
+    Si estuviera sujeta al rate limiting, el verificador de la
+    plataforma —que consulta desde una IP fija cada pocos
+    segundos— recibiría 429 y el servicio se reiniciaría en
+    bucle al interpretarse como instancia caída.
+    """
+    codigos = {client.get("/health").status_code for _ in range(150)}
+
+    assert codigos == {200}
+
+
+def test_health_check_no_expone_informacion(client):
+    """La sonda solo confirma que el proceso responde: no
+    consulta la base ni revela versiones o configuración."""
+    cuerpo = client.get("/health").get_json()
+
+    assert cuerpo == {"status": "ok"}
+
+
+def test_archivos_estaticos_exentos_del_rate_limit(client):
+    """Una sola carga del catálogo son 12 imágenes más CSS y
+    JS. Contarlas agotaba la cuota de usuarios legítimos."""
+    codigos = {
+        client.get("/static/css/app.css").status_code
+        for _ in range(120)
+    }
+
+    assert 429 not in codigos

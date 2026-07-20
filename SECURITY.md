@@ -76,6 +76,24 @@ y está cubierto por la suite de pruebas (`pytest -q`).
   `LOGIN_PASSWORD_OK`, `LOGIN_SUCCESS`, `LOGIN_FAILED`,
   `MFA_FAILED`, `MFA_LOCKED`, `MFA_EXPIRED`.
 
+## Disponibilidad y rate limiting
+
+- Límites globales de 2000/día y 300/hora por dirección IP,
+  más límites específicos por ruta sensible.
+- **Archivos estáticos exentos**: una sola carga del catálogo
+  son 12 imágenes más CSS y JS. Contarlas agotaba la cuota de
+  un usuario legítimo en pocas visitas.
+- **Sonda de salud `/health` exenta y sin acceso a la base**:
+  el verificador de la plataforma consulta desde una IP fija
+  cada pocos segundos; contra un endpoint limitado terminaba
+  recibiendo 429, que se interpretaba como instancia caída y
+  reiniciaba el servicio en bucle. Un control de seguridad mal
+  ubicado se convierte en una negación de servicio contra uno
+  mismo.
+- `ProxyFix` respeta `X-Forwarded-For`, de modo que tras el
+  proxy cada usuario mantiene su propia cuota en vez de
+  compartir una sola.
+
 ## Nivel 5 — Infraestructura (servidor y cabeceras)
 
 - **CSP** restrictiva, `X-Frame-Options: DENY`,
@@ -128,6 +146,14 @@ ser enmascarada por una estadística de comportamiento
 (`test_el_ml_no_puede_enmascarar_una_regla_dura`).
 
 **Qué hace el sistema con el veredicto**
+
+El puntaje por reglas escala con la gravedad del patrón: una
+ráfaga de 6 o más fallos suma 0.50, de modo que combinada con
+un dispositivo desconocido supera el umbral de riesgo alto **a
+cualquier hora**. Sin ese escalado el máximo diurno era 0.70
+contra un umbral de 0.72, y el mismo ataque activaba el desafío
+endurecido de madrugada pero no por la tarde
+(`test_el_riesgo_no_depende_de_la_hora_del_reloj`).
 
 | Riesgo | Efecto |
 |---|---|
