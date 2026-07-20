@@ -18,10 +18,10 @@ services:
     plan: free
     region: oregon
     buildCommand: pip install -r requirements.txt
-    # Migra el esquema y carga el catálogo antes de servir.
-    preDeployCommand: flask --app run.py db upgrade && python seed.py
+    # Se eliminó preDeployCommand porque no es compatible con el plan gratuito.
+    # Ahora las migraciones y la carga de datos se ejecutan justo antes de iniciar Gunicorn.
     startCommand: >-
-      gunicorn --bind=0.0.0.0:$PORT --workers=2 --threads=4
+      flask --app run.py db upgrade && python seed.py && gunicorn --bind=0.0.0.0:$PORT --workers=2 --threads=4
       --timeout=120 --access-logfile=- --error-logfile=- "run:app"
     healthCheckPath: /catalogo
     envVars:
