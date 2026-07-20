@@ -12,7 +12,6 @@ credenciales de correo, pero en producción es obligatorio
 configurar SMTP (ver comprobación en app/__init__.py).
 """
 
-import socket
 import smtplib
 import ssl
 from email.message import EmailMessage

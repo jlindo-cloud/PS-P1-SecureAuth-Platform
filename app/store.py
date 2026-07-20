@@ -1,3 +1,4 @@
+import hmac
 import re
 import secrets
 from decimal import Decimal
@@ -662,12 +663,20 @@ def checkout():
                 total=total,
             ), 400
 
-        # Código fijo únicamente para
-        # esta simulación académica.
-        if validation_token != "123456":
+        # El código de la billetera no se compara contra un
+        # valor escrito en el código fuente: se lee de la
+        # configuración y se contrasta en tiempo constante,
+        # para no filtrar información por diferencias de
+        # tiempo de respuesta.
+        #
+        # En una integración real este código lo genera y
+        # valida la aplicación de la billetera; la tienda
+        # nunca lo conoce.
+        esperado = current_app.config["WALLET_DEMO_TOKEN"]
+
+        if not hmac.compare_digest(validation_token, esperado):
             flash(
-                "Código simulado incorrecto. "
-                "Usa 123456.",
+                "Código de validación incorrecto.",
                 "error",
             )
 
