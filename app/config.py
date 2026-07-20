@@ -179,6 +179,18 @@ class Config:
     # (requiere verificación en 2 pasos en la cuenta), nunca
     # la contraseña personal.
     # ---------------------------------------------------------
+    # ---------------------------------------------------------
+    # Envío por API HTTPS (prioritario sobre SMTP)
+    #
+    # Render bloquea el tráfico saliente a los puertos SMTP
+    # (25, 465, 587) en los servicios web del plan gratuito.
+    # Estas APIs viajan sobre HTTPS (443), así que no se ven
+    # afectadas por esa restricción y mantienen el cifrado en
+    # tránsito. Basta configurar una de las dos.
+    # ---------------------------------------------------------
+    BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
+    RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+
     SMTP_HOST = os.getenv("SMTP_HOST", "")
     SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USER = os.getenv("SMTP_USER", "").strip()

@@ -40,6 +40,35 @@ with app.app_context():
     print(f"  MAIL_FROM     : {cfg['MAIL_FROM']}")
     print()
 
+    if cfg.get("BREVO_API_KEY") or cfg.get("RESEND_API_KEY"):
+        proveedor = (
+            "Brevo" if cfg.get("BREVO_API_KEY") else "Resend"
+        )
+        print(f"Canal activo: API HTTPS ({proveedor})")
+        print("  SMTP no se usará: la API tiene prioridad.\n")
+
+        if len(sys.argv) > 1:
+            from app.mailer import send_email
+
+            destino = sys.argv[1]
+            print(f"Enviando prueba a {destino}...")
+            ok = send_email(
+                destino,
+                "Prueba de configuración · SecureAuth Store",
+                "Si recibes este mensaje, el segundo factor "
+                "puede entregarse correctamente.",
+            )
+            print(
+                "Enviado. Revisa la bandeja (y spam)."
+                if ok
+                else "El envío falló. Revisa el log de arriba."
+            )
+        else:
+            print("Para enviar una prueba real:")
+            print("  python check_smtp.py tu-correo@gmail.com")
+
+        sys.exit(0)
+
     if not all((cfg["SMTP_HOST"], cfg["SMTP_USER"], pwd)):
         print("Falta configuración. Completa el .env.")
         sys.exit(1)

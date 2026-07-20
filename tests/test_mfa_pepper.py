@@ -265,3 +265,131 @@ def test_registro_duplicado_no_revela_existencia(
         user = db.session.get(User, local_user.id)
         ok, _ = verify_password(user.password_hash, PASSWORD)
         assert ok is True
+
+
+# ---------------------------------------------------------
+# Canal de entrega del segundo factor
+# ---------------------------------------------------------
+
+def test_api_https_tiene_prioridad_sobre_smtp(app, monkeypatch):
+    """Con API configurada no se usa SMTP.
+
+    Render bloquea los puertos SMTP salientes en su plan
+    gratuito, así que el canal HTTPS debe ganar siempre que
+    esté disponible.
+    """
+    from app import mailer
+
+    app.config["BREVO_API_KEY"] = "clave-de-prueba"
+    app.config["SMTP_HOST"] = "smtp.ejemplo.com"
+    app.config["SMTP_USER"] = "u@ejemplo.com"
+    app.config["SMTP_PASSWORD"] = "secreto"
+
+    llamadas = {"api": 0, "smtp": 0}
+
+    monkeypatch.setattr(
+        mailer,
+        "_send_via_http_api",
+        lambda *a, **k: llamadas.__setitem__("api", 1) or True,
+    )
+    monkeypatch.setattr(
+        mailer.smtplib,
+        "SMTP",
+        lambda *a, **k: llamadas.__setitem__("smtp", 1),
+    )
+
+    assert mailer.send_email("x@example.com", "Asunto", "Cuerpo")
+    assert llamadas == {"api": 1, "smtp": 0}
+
+
+def test_la_configuracion_acepta_api_sin_smtp(app):
+    """Con solo la API configurada el correo se considera
+    disponible: SMTP deja de ser obligatorio."""
+    from app.mailer import mail_is_configured
+
+    app.config["BREVO_API_KEY"] = "clave-de-prueba"
+    app.config["SMTP_HOST"] = ""
+    app.config["SMTP_USER"] = ""
+    app.config["SMTP_PASSWORD"] = ""
+
+    assert mail_is_configured() is True
+
+
+def test_destino_de_correo_restringido_a_lista_permitida(app):
+    """El cliente HTTP solo acepta proveedores conocidos.
+
+    Un cliente sin restricción de destino es el punto de
+    partida de un SSRF si alguien hiciera configurable el
+    endpoint (OWASP A10).
+    """
+    import pytest as _pytest
+
+    from app.mailer import _post_json
+
+    for destino in (
+        "file:///etc/passwd",
+        "http://169.254.169.254/latest/meta-data/",
+        "https://api.brevo.com.atacante.test/v3/smtp/email",
+        "proveedor-inventado",
+    ):
+        with _pytest.raises(ValueError):
+            _post_json(destino, {}, {})
+
+
+@pytest.mark.parametrize(
+    "clave, proveedor, url_esperada",
+    [
+        (
+            "BREVO_API_KEY",
+            "Brevo",
+            "https://api.brevo.com/v3/smtp/email",
+        ),
+        (
+            "RESEND_API_KEY",
+            "Resend",
+            "https://api.resend.com/emails",
+        ),
+    ],
+)
+def test_envio_por_api_llega_al_endpoint_correcto(
+    app, monkeypatch, clave, proveedor, url_esperada
+):
+    """Recorre el camino real de envío hasta el cliente HTTP.
+
+    Sin esta prueba, una descoordinación entre el identificador
+    que se pasa y la tabla de destinos permitidos pasa
+    inadvertida en las pruebas y rompe solo en producción.
+    """
+    from app import mailer
+
+    app.config["BREVO_API_KEY"] = ""
+    app.config["RESEND_API_KEY"] = ""
+    app.config[clave] = "clave-de-prueba"
+    app.config["MAIL_FROM"] = (
+        "SecureAuth Store <no-reply@example.com>"
+    )
+
+    capturado = {}
+
+    class RespuestaFalsa:
+        ok = True
+
+    def post_falso(url, **kwargs):
+        capturado["url"] = url
+        capturado["json"] = kwargs.get("json")
+        capturado["verify"] = kwargs.get("verify")
+        return RespuestaFalsa()
+
+    monkeypatch.setattr(mailer.requests, "post", post_falso)
+
+    assert mailer.send_email(
+        "destino@example.com",
+        "Asunto de prueba",
+        "Cuerpo del mensaje",
+    ) is True
+
+    assert capturado["url"] == url_esperada, (
+        f"{proveedor}: el envío no llegó al endpoint correcto"
+    )
+    # El certificado del servidor siempre se verifica.
+    assert capturado["verify"] is True

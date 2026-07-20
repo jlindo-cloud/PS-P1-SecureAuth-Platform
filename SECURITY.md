@@ -14,9 +14,15 @@ y está cubierto por la suite de pruebas (`pytest -q`).
   TLS (Azure App Service: *Minimum TLS Version*; en Render el
   certificado y TLS 1.3 son automáticos). Gunicorn corre detrás
   del proxy con `ProxyFix` para respetar `X-Forwarded-Proto`.
-- El canal del segundo factor también va cifrado: el envío SMTP
-  usa STARTTLS o SMTPS con verificación de certificado
-  (`ssl.create_default_context()`), nunca texto plano.
+- El canal del segundo factor también va cifrado. Dos vías,
+  ambas con verificación de certificado
+  (`ssl.create_default_context()`) y nunca en texto plano:
+  - **API HTTPS** (Brevo o Resend) sobre el puerto 443. Es la
+    vía necesaria en plataformas que bloquean los puertos SMTP
+    salientes en sus planes gratuitos, como Render desde
+    septiembre de 2025.
+  - **SMTP con STARTTLS o SMTPS**, para desarrollo local y
+    planes de pago.
 
 ## Nivel 2 — Almacenamiento (base de datos segura)
 

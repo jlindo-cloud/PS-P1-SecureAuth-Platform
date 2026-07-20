@@ -23,6 +23,12 @@ pyodbc>=5.2,<6
 # PostgreSQL (despliegue en Render / Railway)
 psycopg[binary]>=3.2,<4
 
+# Cliente HTTP para la API de correo
+# Declarado explícitamente: se usa en app/mailer.py en vez de
+# urllib.request.urlopen, que acepta esquemas como file://
+# (Bandit B310 / CWE-22).
+requests>=2.32,<3
+
 # Utilidades
 Pillow>=11,<13
 python-dotenv>=1.0,<2

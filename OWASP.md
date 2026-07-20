@@ -7,7 +7,7 @@ cada control y la prueba automatizada que lo verifica.
 Ejecutar la evidencia completa:
 
 ```bash
-pytest -q     # 50 pruebas
+pytest -q     # 55 pruebas
 ```
 
 ---
@@ -188,10 +188,25 @@ variables de entorno del servidor:
 | Proveedor OIDC de Google | URL fija de metadatos |
 | Azure Blob Storage | URL de cuenta desde configuración |
 
-Además, el parámetro `next` del login está restringido a rutas
+Aun así se aplican dos controles preventivos:
+
+- **El destino no se recibe como URL.** El cliente HTTP del
+  módulo de correo toma un identificador interno (`brevo`,
+  `resend`) y resuelve la URL desde una tabla fija
+  (`app/mailer.py: _ENDPOINTS_PERMITIDOS`). Ninguna URL externa
+  llega nunca al cliente, y un identificador desconocido se
+  rechaza antes de abrir la conexión.
+- **Cliente HTTP que solo habla HTTP/HTTPS.** Se usa `requests`
+  en vez de `urllib.request.urlopen`, que acepta esquemas como
+  `file://` y convertiría cualquier URL no validada en una
+  lectura de archivos locales (CWE-22, Bandit B310).
+
+El parámetro `next` del login está restringido a rutas
 relativas del propio sitio (`is_safe_relative_url`), lo que
 cierra el *open redirect* que suele acompañar a esta clase de
 ataques.
+
+**Prueba:** `test_destino_de_correo_restringido_a_lista_permitida`
 
 ---
 
@@ -208,4 +223,4 @@ ataques.
 | A07 Autenticación | Cubierto |
 | A08 Integridad | Cubierto |
 | A09 Registro y monitoreo | Cubierto, sin alertado automático |
-| A10 SSRF | No aplica por diseño |
+| A10 SSRF | No aplica por diseño, con controles preventivos |

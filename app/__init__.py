@@ -32,16 +32,27 @@ def create_app(test_config: dict | None = None) -> Flask:
     # El segundo factor viaja por correo: sin SMTP el MFA
     # no puede entregarse y la aplicación quedaría con un
     # solo factor efectivo.
-    if app.config["ENVIRONMENT"] == "production" and not all(
+    _hay_api = any(
+        (
+            app.config.get("BREVO_API_KEY"),
+            app.config.get("RESEND_API_KEY"),
+        )
+    )
+    _hay_smtp = all(
         (
             app.config.get("SMTP_HOST"),
             app.config.get("SMTP_USER"),
             app.config.get("SMTP_PASSWORD"),
         )
+    )
+
+    if app.config["ENVIRONMENT"] == "production" and not (
+        _hay_api or _hay_smtp
     ):
         raise RuntimeError(
-            "La configuración SMTP es obligatoria en producción: "
-            "sin ella no puede entregarse el segundo factor."
+            "Se requiere un canal de correo en producción "
+            "(BREVO_API_KEY, RESEND_API_KEY o SMTP_*): sin él "
+            "no puede entregarse el segundo factor."
         )
 
     # App Service termina TLS delante de Gunicorn y envía X-Forwarded-*.

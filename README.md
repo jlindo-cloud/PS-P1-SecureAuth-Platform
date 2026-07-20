@@ -7,7 +7,8 @@
 ![Argon2id](https://img.shields.io/badge/Hash-Argon2id-4B275F)
 ![MFA](https://img.shields.io/badge/MFA-OTP%20por%20correo-0aa884)
 ![ML](https://img.shields.io/badge/ML-IsolationForest%20%2B%20LOF-F7931E?logo=scikitlearn&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-50%20passed-2ea44f)
+![Tests](https://img.shields.io/badge/tests-55%20passed-2ea44f)
+![Coverage](https://img.shields.io/badge/cobertura-72%25-2ea44f)
 ![OWASP](https://img.shields.io/badge/OWASP%20Top%2010-2021-000000?logo=owasp&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -143,8 +144,9 @@ secureauth-store/
 │       └── uploads/        # 12 imágenes del catálogo
 │
 ├── migrations/             # Esquema versionado
-├── tests/                  # 50 pruebas de seguridad
+├── tests/                  # 55 pruebas de seguridad
 ├── azure/                  # Scripts para despliegue en Azure
+├── CORREO.md               # Configuración del envío del segundo factor
 ├── SECURITY.md             # Los 5 niveles en detalle
 ├── OWASP.md                # Mapeo del OWASP Top 10 (2021)
 └── ARCHITECTURE.md
@@ -431,9 +433,25 @@ responder **403**.
 ## 1.9 Pruebas automáticas
 
 ```bash
-pytest -q     # 50 pruebas
+pytest -q     # 55 pruebas
 pytest -v     # detalle una por una
+
+# Cobertura
+pip install pytest-cov
+pytest -q --cov=app --cov-report=term
 ```
+
+Cobertura medida: **72%** sobre el paquete `app`.
+
+| Módulo | Cobertura |
+|---|---|
+| `models.py`, `forms.py`, `extensions.py` | 100% |
+| `config.py` | 97% |
+| `__init__.py`, `security.py` | 93% |
+| `anomaly_detector.py` | 90% |
+| `audit.py` | 81% |
+| `store.py` | 71% |
+| `auth.py` | 68% |
 
 **Cobertura:**
 
@@ -495,6 +513,31 @@ administrada y despliegue desde GitHub. Alternativas
 equivalentes: Railway, Fly.io o PythonAnywhere.
 
 ## 2.1 Preparar el correo emisor
+
+> ⚠️ **Render bloquea los puertos SMTP en el plan gratuito.**
+> Desde el 26 de septiembre de 2025, los servicios web
+> gratuitos no pueden abrir conexiones salientes a los puertos
+> 25, 465 y 587. Gmail por SMTP **no funciona** ahí, por más
+> que las credenciales sean correctas.
+>
+> La solución es una **API de correo por HTTPS**, que viaja por
+> el puerto 443 y no está afectada. Sigue manteniendo el
+> cifrado en tránsito del Nivel 1.
+>
+> **Opción recomendada — Brevo** (300 correos/día gratis, envía
+> a cualquier destinatario):
+> 1. Crear cuenta en [brevo.com](https://www.brevo.com)
+> 2. **SMTP & API** → **API Keys** → generar una
+> 3. En Render → Environment: `BREVO_API_KEY` con ese valor
+> 4. `MAIL_FROM` con el correo verificado en Brevo
+>
+> Alternativa: `RESEND_API_KEY` de [resend.com](https://resend.com).
+>
+> **Guía paso a paso completa en [`CORREO.md`](CORREO.md).**
+>
+> Si la API está configurada, tiene prioridad sobre SMTP. Las
+> variables `SMTP_*` siguen sirviendo en local y en planes de
+> pago. Lo que viene abajo aplica a esos casos.
 
 **Hacer esto primero.** Sin SMTP la aplicación **no arranca**
 en producción, por diseño: un MFA que no puede entregar el
@@ -747,7 +790,8 @@ Supabase, cambiando solo `DATABASE_URL`.
 | `Can't load plugin: sqlalchemy.dialects:postgres` | Esquema antiguo de URL | Verificar que se desplegó la versión con la normalización en `config.py` |
 | `SMTPAuthenticationError (535 BadCredentials)` | Contraseña de aplicación incorrecta | Ver [diagnóstico de correo](#diagnóstico-de-correo) |
 | El correo no llega a una cuenta `@example.com` | Esa dirección no existe | Usar un correo real: ver [2.7](#27-administrador-de-producción) |
-| El correo no llega a un correo real | SMTP mal configurado o filtro de spam | Revisar los logs de Render buscando `mailer`; revisar spam |
+| El correo no llega a un correo real | En Render gratuito, los puertos SMTP están bloqueados | Configurar `BREVO_API_KEY` (ver [2.1](#21-preparar-el-correo-emisor)) |
+| `TimeoutError` al enviar en Render | Puertos SMTP bloqueados en el plan gratuito | Igual que arriba |
 | "No pudimos enviar el código de verificación" | El envío falló en producción | Verificar `SMTP_USER` y `SMTP_PASSWORD` en Render |
 | `Application exited early` | Falló el pre-deploy | Revisar el log de esa fase |
 | Deploy a Azure falla en un fork | GitHub no propaga secrets a forks | Comportamiento esperado; los checks relevantes son `test` y `security-checks` |
