@@ -425,3 +425,85 @@ class AuditLog(db.Model):
         default=utcnow,
         nullable=False,
     )
+
+class LoginAttempt(db.Model):
+    """
+    Historial de intentos de acceso para el motor Zero-Trust.
+
+    Alimenta el análisis de comportamiento de
+    `app/anomaly_detector.py`: cada fila es un punto del patrón
+    habitual del usuario (hora, día, red, dispositivo) contra
+    el que se compara cada nuevo intento.
+
+    La IP se guarda **hasheada** (SHA-256 truncado), no en
+    claro: basta para comparar si es la misma red de siempre,
+    sin conservar un dato personal identificable.
+    """
+
+    __tablename__ = "login_attempts"
+
+    __table_args__ = (
+        Index(
+            "ix_login_attempts_email_created",
+            "email",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+    )
+
+    email: Mapped[str] = mapped_column(
+        db.String(254),
+        nullable=False,
+        index=True,
+    )
+
+    success: Mapped[bool] = mapped_column(
+        nullable=False,
+        default=False,
+    )
+
+    ip_hash: Mapped[str | None] = mapped_column(
+        db.String(64),
+        nullable=True,
+    )
+
+    user_agent: Mapped[str | None] = mapped_column(
+        db.String(300),
+        nullable=True,
+    )
+
+    hour_of_day: Mapped[int | None] = mapped_column(
+        nullable=True,
+    )
+
+    day_of_week: Mapped[int | None] = mapped_column(
+        nullable=True,
+    )
+
+    risk_score: Mapped[float | None] = mapped_column(
+        nullable=True,
+    )
+
+    risk_level: Mapped[str | None] = mapped_column(
+        db.String(10),
+        nullable=True,
+    )
+
+    risk_method: Mapped[str | None] = mapped_column(
+        db.String(40),
+        nullable=True,
+    )
+
+    risk_factors: Mapped[str | None] = mapped_column(
+        db.String(500),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        default=utcnow,
+        nullable=False,
+        index=True,
+    )

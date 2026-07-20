@@ -3,7 +3,8 @@
 {% block content %}
 <div class="page-heading">
   <div><span class="eyebrow">RBAC: Admin</span><h1>Gestión de productos</h1></div>
-  <div class="heading-actions"><a class="button button-secondary" href="{{ url_for('admin.audit_logs') }}">Auditoría</a><a class="button" href="{{ url_for('admin.product_create') }}">Nuevo producto</a></div>
+  <div class="heading-actions"><a class="button button-secondary" href="{{ url_for('admin.audit_logs') }}">Auditoría</a>
+    <a class="button button-secondary" href="{{ url_for('admin.anomalies') }}">Anomalías</a><a class="button" href="{{ url_for('admin.product_create') }}">Nuevo producto</a></div>
 </div>
 <div class="table-wrap">
 <table>

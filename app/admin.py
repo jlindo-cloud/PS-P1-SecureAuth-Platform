@@ -4,7 +4,7 @@ from sqlalchemy import select
 from .audit import audit_event
 from .extensions import db, limiter
 from .forms import ProductForm
-from .models import AuditLog, Product
+from .models import AuditLog, LoginAttempt, Product
 from .security import role_required
 from .storage import ImageValidationError, ProductImageStorage, normalize_image
 
@@ -133,3 +133,29 @@ def audit_logs():
         select(AuditLog).order_by(AuditLog.created_at.desc()).limit(200)
     ).scalars().all()
     return render_template("admin/audit.html", logs=logs)
+
+
+@admin_bp.get("/anomalies")
+@role_required("Admin")
+def anomalies():
+    """
+    Panel Zero-Trust: historial de intentos de acceso con el
+    puntaje de riesgo calculado por el motor de detección de
+    anomalías.
+    """
+    attempts = db.session.execute(
+        select(LoginAttempt)
+        .order_by(LoginAttempt.created_at.desc())
+        .limit(200)
+    ).scalars().all()
+
+    resumen = {"high": 0, "medium": 0, "low": 0}
+    for a in attempts:
+        if a.risk_level in resumen:
+            resumen[a.risk_level] += 1
+
+    return render_template(
+        "admin/anomalies.html",
+        attempts=attempts,
+        resumen=resumen,
+    )
